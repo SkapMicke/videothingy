@@ -2,8 +2,7 @@
   "name": "video-editor-vercel",
   "version": "1.0.0",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo static",
+    "build": "mkdir -p dist && cp index.html dist/index.html",
     "start": "vercel dev"
   },
   "dependencies": {}
