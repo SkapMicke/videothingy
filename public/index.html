@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <title>Video Editor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      padding: 30px;
+    }
+
+    .box {
+      max-width: 750px;
+      margin: auto;
+      background: #1c1c1c;
+      padding: 25px;
+      border-radius: 18px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 15px;
+      border-radius: 10px;
+      border: none;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #ffcc00;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .log {
+      background: #000;
+      padding: 12px;
+      border-radius: 10px;
+      height: 160px;
+      overflow: auto;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    a {
+      color: #ffcc00;
+      display: block;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Video Editor</h1>
+
+    <label>Välj videos</label>
+    <input id="videos" type="file" accept="video/*,.mts,.MTS" multiple />
+
+    <label>Nytt ljud, valfritt</label>
+    <input id="audio" type="file" accept="audio/*" />
+
+    <label>Konvertera till format</label>
+    <select id="format">
+      <option value="mp4">MP4</option>
+      <option value="mov">MOV</option>
+      <option value="mkv">MKV</option>
+      <option value="webm">WEBM</option>
+    </select>
+
+    <label>
+      <input id="removeAudio" type="checkbox" />
+      Ta bort originalljud
+    </label>
+
+    <label>Fade in, sekunder</label>
+    <input id="fadeIn" type="number" value="2" min="0" />
+
+    <label>Fade out, sekunder</label>
+    <input id="fadeOut" type="number" value="2" min="0" />
+
+    <label>Vattenstämpel-text</label>
+    <input id="watermark" type="text" placeholder="Ex: Simons Dansmedia" />
+
+    <button id="startBtn">Bearbeta videos</button>
+
+    <h3>Status</h3>
+    <div id="log" class="log"></div>
+
+    <h3>Nedladdningar</h3>
+    <div id="downloads"></div>
+  </div>
+
+  <script type="module">
+    import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
+    import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js";
+
+    const ffmpeg = new FFmpeg();
+    const logBox = document.getElementById("log");
+    const downloads = document.getElementById("downloads");
+
+    function log(msg) {
+      logBox.textContent += msg + "\n";
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    async function loadFFmpeg() {
+      if (ffmpeg.loaded) return;
+
+      log("Laddar FFmpeg...");
+
+      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript")
+      });
+
+      log("FFmpeg laddat.");
+    }
+
+    function getExt(filename) {
+      return filename.split(".").pop().toLowerCase();
+    }
+
+    function cleanName(filename) {
+      return filename.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9åäö_-]/gi, "_");
+    }
+
+    document.getElementById("startBtn").addEventListener("click", async () => {
+      const videos = document.getElementById("videos").files;
+      const audio = document.getElementById("audio").files[0];
+      const format = document.getElementById("format").value;
+      const removeAudio = document.getElementById("removeAudio").checked;
+      const fadeIn = Number(document.getElementById("fadeIn").value || 0);
+      const fadeOut = Number(document.getElementById("fadeOut").value || 0);
+      const watermark = document.getElementById("watermark").value.trim();
+
+      if (!videos.length) {
+        alert("Välj minst en video.");
+        return;
+      }
+
+      downloads.innerHTML = "";
+      logBox.textContent = "";
+
+      await loadFFmpeg();
+
+      let audioName = null;
+
+      if (audio) {
+        audioName = "custom_audio." + getExt(audio.name);
+        await ffmpeg.writeFile(audioName, await fetchFile(audio));
+      }
+
+      for (const video of videos) {
+        const inputName = "input_" + Date.now() + "_" + cleanName(video.name) + "." + getExt(video.name);
+        const outputName = cleanName(video.name) + "_edited." + format;
+
+        log("Laddar in: " + video.name);
+        await ffmpeg.writeFile(inputName, await fetchFile(video));
+
+        const args = ["-i", inputName];
+
+        if (audioName) {
+          args.push("-i", audioName);
+        }
+
+        if (watermark) {
+          args.push(
+            "-vf",
+            `drawtext=text='${watermark.replace(/'/g, "\\'")}':fontcolor=white:fontsize=36:box=1:boxcolor=black@0.45:boxborderw=10:x=w-tw-30:y=h-th-30`
+          );
+        }
+
+        if (audioName) {
+          args.push("-map", "0:v:0", "-map", "1:a:0");
+
+          const filters = [];
+
+          if (fadeIn > 0) {
+            filters.push(`afade=t=in:ss=0:d=${fadeIn}`);
+          }
+
+          if (fadeOut > 0) {
+            filters.push(`afade=t=out:st=999999:d=${fadeOut}`);
+          }
+
+          if (filters.length) {
+            args.push("-filter:a", filters.join(","));
+          }
+
+          args.push("-shortest");
+        } else if (removeAudio) {
+          args.push("-an");
+        }
+
+        if (format === "webm") {
+          args.push("-c:v", "libvpx-vp9", "-c:a", "libopus");
+        } else {
+          args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "24");
+
+          if (!removeAudio || audioName) {
+            args.push("-c:a", "aac");
+          }
+        }
+
+        args.push(outputName);
+
+        log("Bearbetar: " + video.name);
+        await ffmpeg.exec(args);
+
+        const data = await ffmpeg.readFile(outputName);
+        const blob = new Blob([data.buffer], { type: "video/" + format });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = outputName;
+        a.textContent = "Ladda ner " + outputName;
+        downloads.appendChild(a);
+
+        log("Klar: " + outputName);
+      }
+
+      log("Alla videos är klara.");
+    });
+  </script>
+</body>
+</html>
