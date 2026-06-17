@@ -1,7 +1,8 @@
 {
-  "name": "video-editor-vercel-ready",
+  "name": "video-converter-vercel-fixed",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
@@ -9,7 +10,9 @@
   },
   "dependencies": {
     "@vitejs/plugin-basic-ssl": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "@ffmpeg/ffmpeg": "0.12.10",
+    "@ffmpeg/util": "0.12.1"
   },
   "devDependencies": {}
 }
