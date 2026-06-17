@@ -1,18 +1,19 @@
 {
-  "name": "video-converter-vercel-fixed",
+  "name": "simonsdansmedia-video-toolkit",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "dev": "node copy-ffmpeg-core.js && vite --host 0.0.0.0",
+    "build": "node copy-ffmpeg-core.js && vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@vitejs/plugin-basic-ssl": "latest",
-    "vite": "latest",
+    "@ffmpeg/core": "0.12.6",
     "@ffmpeg/ffmpeg": "0.12.10",
-    "@ffmpeg/util": "0.12.1"
+    "@ffmpeg/util": "0.12.1",
+    "@vitejs/plugin-basic-ssl": "latest",
+    "vite": "latest"
   },
   "devDependencies": {}
 }
