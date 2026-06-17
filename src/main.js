@@ -5,52 +5,124 @@ import './style.css';
 const app = document.getElementById('app');
 
 app.innerHTML = `
-  <main class="wrap">
-    <section class="card">
-      <h1>Video Converter</h1>
-      <p class="sub">Konvertera videos, t.ex. MTS till MP4, ta bort ljud, lägg nytt ljud med fade och vattenstämpel.</p>
-
-      <label>Välj videos</label>
-      <input id="videos" type="file" accept="video/*,.mts,.MTS,.m2ts,.M2TS" multiple />
-
-      <label>Konvertera till format</label>
-      <select id="format">
-        <option value="mp4">MP4</option>
-        <option value="mov">MOV</option>
-        <option value="mkv">MKV</option>
-        <option value="webm">WEBM</option>
-      </select>
-
-      <label>Nytt ljud, valfritt</label>
-      <input id="audio" type="file" accept="audio/*" />
-
-      <div class="checkrow">
-        <input id="removeAudio" type="checkbox" />
-        <span>Ta bort originalljud</span>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="brand-pill">
+        <span class="dot"></span>
+        Simons Dansmedia Toolkit
       </div>
 
-      <div class="grid">
+      <div class="hero-grid">
         <div>
+          <p class="eyebrow">Videoverktyg för dansband, spelningar & sociala medier</p>
+          <h1>Konvertera, ljudsätt och märk dina videos.</h1>
+          <p class="lead">
+            Ladda in flera klipp, konvertera MTS till MP4, ta bort originalljud, lägg på nytt ljud med fade och vattenstämpla allt med Simons Dansmedia-känsla.
+          </p>
+          <div class="hero-actions">
+            <a href="#tool" class="primary-link">Starta verktyget</a>
+            <span class="mini-note">Kör direkt i webbläsaren • Ingen serverupload</span>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div class="fake-video">
+            <div class="stage-light one"></div>
+            <div class="stage-light two"></div>
+            <div class="play">▶</div>
+            <div class="watermark-preview">SIMONS DANSMEDIA</div>
+          </div>
+          <div class="stats-row">
+            <div><b>MTS</b><span>in</span></div>
+            <div><b>MP4</b><span>ut</span></div>
+            <div><b>Batch</b><span>flera klipp</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tool" class="tool-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Editor</p>
+          <h2>Bearbeta dina videos</h2>
+        </div>
+        <span class="badge">Vercel-ready</span>
+      </div>
+
+      <div class="upload-zone">
+        <label for="videos" class="upload-label">
+          <span class="upload-icon">＋</span>
+          <strong>Välj videos</strong>
+          <small>MTS, M2TS, MP4, MOV, MKV, WEBM</small>
+        </label>
+        <input id="videos" type="file" accept="video/*,.mts,.MTS,.m2ts,.M2TS" multiple />
+      </div>
+      <div id="fileList" class="file-list empty">Inga videos valda ännu.</div>
+
+      <div class="settings-grid">
+        <div class="field">
+          <label>Konvertera till format</label>
+          <select id="format">
+            <option value="mp4">MP4 - bäst för sociala medier</option>
+            <option value="mov">MOV</option>
+            <option value="mkv">MKV</option>
+            <option value="webm">WEBM</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Nytt ljud, valfritt</label>
+          <input id="audio" type="file" accept="audio/*" />
+        </div>
+      </div>
+
+      <div class="option-strip">
+        <label class="toggle-row">
+          <input id="removeAudio" type="checkbox" />
+          <span>
+            <b>Ta bort originalljud</b>
+            <small>Användbart om kamerans ljud är kasst eller ska ersättas.</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="settings-grid three">
+        <div class="field">
           <label>Fade in, sekunder</label>
           <input id="fadeIn" type="number" value="2" min="0" />
         </div>
-        <div>
+        <div class="field">
           <label>Fade out, sekunder</label>
           <input id="fadeOut" type="number" value="2" min="0" />
         </div>
+        <div class="field">
+          <label>Vattenstämpel</label>
+          <input id="watermark" type="text" value="Simons Dansmedia" placeholder="Ex: Simons Dansmedia" />
+        </div>
       </div>
 
-      <label>Vattenstämpel-text</label>
-      <input id="watermark" type="text" placeholder="Ex: Simons Dansmedia" />
+      <button id="startBtn" class="start-btn">
+        <span>Bearbeta & konvertera videos</span>
+        <small>Kan ta en stund vid stora MTS-filer</small>
+      </button>
 
-      <button id="startBtn">Bearbeta videos</button>
-
-      <h3>Status</h3>
-      <pre id="log"></pre>
-
-      <h3>Nedladdningar</h3>
-      <div id="downloads"></div>
+      <div class="output-grid">
+        <div class="panel">
+          <div class="panel-title">Status</div>
+          <pre id="log">Väntar på videos...</pre>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Nedladdningar</div>
+          <div id="downloads" class="downloads-empty">Dina färdiga filer hamnar här.</div>
+        </div>
+      </div>
     </section>
+
+    <footer>
+      <span>Byggt för Simonsdansmedia.com</span>
+      <span>Dansband • Foto • Film • Dokumentation</span>
+    </footer>
   </main>
 `;
 
@@ -58,8 +130,11 @@ const ffmpeg = new FFmpeg();
 const logBox = document.getElementById('log');
 const downloads = document.getElementById('downloads');
 const startBtn = document.getElementById('startBtn');
+const videosInput = document.getElementById('videos');
+const fileList = document.getElementById('fileList');
 
 function log(message) {
+  if (logBox.textContent === 'Väntar på videos...') logBox.textContent = '';
   logBox.textContent += message + '\n';
   logBox.scrollTop = logBox.scrollHeight;
 }
@@ -72,10 +147,34 @@ function cleanName(filename) {
   return filename.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9åäö_-]/gi, '_');
 }
 
+function formatBytes(bytes) {
+  if (!bytes) return '0 MB';
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+}
+
+videosInput.addEventListener('change', () => {
+  const files = Array.from(videosInput.files || []);
+  if (!files.length) {
+    fileList.className = 'file-list empty';
+    fileList.textContent = 'Inga videos valda ännu.';
+    return;
+  }
+
+  fileList.className = 'file-list';
+  fileList.innerHTML = files.map((file) => `
+    <div class="file-chip">
+      <span>${file.name}</span>
+      <small>${formatBytes(file.size)}</small>
+    </div>
+  `).join('');
+});
+
 async function loadFFmpeg() {
   if (ffmpeg.loaded) return;
 
-  log('Laddar FFmpeg...');
+  log('Laddar videomotorn...');
 
   const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
 
@@ -85,7 +184,7 @@ async function loadFFmpeg() {
     workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript')
   });
 
-  log('FFmpeg laddat.');
+  log('Videomotorn är redo.');
 }
 
 startBtn.addEventListener('click', async () => {
@@ -98,12 +197,13 @@ startBtn.addEventListener('click', async () => {
   const watermark = document.getElementById('watermark').value.trim();
 
   if (!videos.length) {
-    alert('Välj minst en video.');
+    alert('Välj minst en video först.');
     return;
   }
 
   startBtn.disabled = true;
   downloads.innerHTML = '';
+  downloads.className = '';
   logBox.textContent = '';
 
   try {
@@ -113,12 +213,13 @@ startBtn.addEventListener('click', async () => {
 
     if (audio) {
       audioName = `custom_audio.${ext(audio.name)}`;
+      log(`Laddar ljudfil: ${audio.name}`);
       await ffmpeg.writeFile(audioName, await fetchFile(audio));
     }
 
     for (const video of videos) {
       const inputName = `input_${Date.now()}_${cleanName(video.name)}.${ext(video.name)}`;
-      const outputName = `${cleanName(video.name)}_edited.${format}`;
+      const outputName = `${cleanName(video.name)}_simonsdansmedia.${format}`;
 
       log(`Laddar in: ${video.name}`);
       await ffmpeg.writeFile(inputName, await fetchFile(video));
@@ -130,7 +231,7 @@ startBtn.addEventListener('click', async () => {
       if (watermark) {
         args.push(
           '-vf',
-          `drawtext=text='${watermark.replace(/'/g, "\\'")}':fontcolor=white:fontsize=36:box=1:boxcolor=black@0.45:boxborderw=10:x=w-tw-30:y=h-th-30`
+          `drawtext=text='${watermark.replace(/'/g, "\\'")}':fontcolor=white:fontsize=38:box=1:boxcolor=black@0.50:boxborderw=12:x=w-tw-34:y=h-th-34`
         );
       }
 
@@ -167,14 +268,14 @@ startBtn.addEventListener('click', async () => {
       const a = document.createElement('a');
       a.href = url;
       a.download = outputName;
-      a.textContent = `Ladda ner ${outputName}`;
-      a.className = 'download';
+      a.className = 'download-card';
+      a.innerHTML = `<b>Ladda ner</b><span>${outputName}</span>`;
       downloads.appendChild(a);
 
       log(`Klar: ${outputName}`);
     }
 
-    log('Alla videos är klara.');
+    log('Alla videos är klara. Snyggt, nu börjar det likna något.');
   } catch (error) {
     console.error(error);
     log('FEL: ' + (error?.message || error));
